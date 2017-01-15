@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">GetHtmlFromUrl</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="textview_whattodo">Input URL here:</string>
+    <string name="edittext_hint">http://</string>
+    <string name="button_go">Go!</string>
+
+</resources>
