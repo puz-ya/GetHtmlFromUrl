@@ -1,39 +1,26 @@
 package com.yd.gethtmlfromurl;
 
-import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.ProgressDialog;
-import android.os.Build;
+import android.content.Context;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.webkit.JavascriptInterface;
-import android.webkit.ValueCallback;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-
-import java.io.IOException;
-import java.util.Scanner;
 
 public class MainActivity extends AppCompatActivity {
 
     private ProgressDialog mProgressDialog;
     private WebView mWebView;
-    private TextView mTextViewHTML;
-    private String mString;
+    final Context myApp = this;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,8 +28,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-        mTextViewHTML = (TextView) findViewById(R.id.textview_insertHTML);
     }
 
     @Override
@@ -67,57 +52,72 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    /* An instance of this class will be registered as a JavaScript interface */
+    public class MyJavaScriptInterface
+    {
+        @JavascriptInterface
+        @SuppressWarnings("unused")
+        public void showHTML(String html)
+        {
+            TextView txtView = (TextView) ((Activity)myApp).findViewById(R.id.textview_insertHTML);
+            txtView.setText(html);
+
+            /* for test
+            new AlertDialog.Builder(myApp)
+                    .setTitle("HTML code")
+                    .setMessage(html)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .setCancelable(false)
+                    .create()
+                    .show();
+            */
+        }
+    }
+
     public void getHTML(View view){
 
         EditText ed = (EditText) findViewById(R.id.edittext_siteurl);
         String urlText = ed.getText().toString();
 
-        class MyJavaScriptInterface
-        {
-            @JavascriptInterface
-            @SuppressWarnings("unused")
-            public void showHTML(String html) {
-                mString = html;
-                mTextViewHTML.setText(html);
-            }
-        }
+        mProgressDialog = ProgressDialog.show(this, "", "Getting html code...");
 
-        mProgressDialog = ProgressDialog.show(MainActivity.this, "", "Loading from URL");
-        mWebView = (WebView) findViewById(R.id.webview_html);
-        WebSettings webSettings = mWebView.getSettings();
-        webSettings.getJavaScriptEnabled();
-        /* Register a new JavaScript interface called HTMLOUT */
+        mWebView = (WebView)findViewById(R.id.webview_html);
+        // JavaScript must be enabled
+        mWebView.getSettings().setJavaScriptEnabled(true);
+
+        // Register a new JavaScript interface called HTMLOUT
         mWebView.addJavascriptInterface(new MyJavaScriptInterface(), "HTMLOUT");
-        mWebView.setScrollBarStyle(WebView.SCROLLBARS_OUTSIDE_OVERLAY);
 
-        mWebView.setWebViewClient(new WebViewClient(){
+        // WebViewClient must be set BEFORE calling loadUrl!
+        mWebView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onPageFinished(WebView view, String url){
+            public void onPageFinished(WebView view, String url)
+            {
+                // This call inject JavaScript into the page which just finished loading.
+                mWebView.loadUrl("javascript:window.HTMLOUT.showHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');");
                 mProgressDialog.dismiss();
-            /* This call inject JavaScript into the page which just finished loading. */
-                //mWebView.loadUrl("javascript:window.HTMLOUT.showHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');");
-                //mWebView.loadUrl("javascript:window.HTMLOUT.showHTML('<head>'+document.getElementsByTagName('html')[0].innerHTML+'</head>');");
-                mWebView.loadUrl("javascript:HTMLOUT.showHTML" +
-                        "('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');");
             }
         });
+
+        // set URL address right
+        urlText = setURL(urlText);
+        // load a web page */
         mWebView.loadUrl(urlText);
 
-/*
-        mWebView.evaluateJavascript("(function(){return window.document.body.showHTML})();",
-                new ValueCallback<String>() {
-                    @Override
-                    public void onReceiveValue(String html) {
-                        mString = html;
-                        mTextViewHTML.setText(html);
-                    }
-                });
-*/
+    }
 
-        //mWebView.loadUrl("javascript:window.HTMLOUT.showHTML('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');");
-        //mTextViewHTML.setText(webView.toString());
-        String test = mTextViewHTML.getText().toString();
-
+    /*
+    *   Checking input string for correct transfer protocol (http or https)
+    *   @param  str  String of URL, that we will show in WebView
+    *   @return     String with corrected beginning (type of protocol)
+    */
+    public String setURL(String str){
+        boolean b1 = str.startsWith("http://");
+        boolean b2 = str.startsWith("https://");
+        if(!b1 && !b2){
+            str = "http://" + str;
+        }
+        return str;
     }
 
 }
